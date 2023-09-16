@@ -11,11 +11,11 @@
 </head>
 
 <body>
-    
+    <div id="background">
         <object type="image/svg+xml" data="assets/logos/dvd.svg" id="logoImg">
         </object>
     
-
+    </div>
     <script src="//unpkg.com/twitch-js@>2.0.0-beta.41"></script>
 
     <script type="module">
@@ -36,6 +36,7 @@
         let bounceTime = 50;
         let lastBounce = { time: 0, direction: "" };
         let winAnimationLength = 2500;
+        let darken=0;
 
         function constrain(value, min, max) {
             if (value < min) {
@@ -221,6 +222,9 @@
             if (urlParams.has("bounceTime")) {
                 bounceTime = parseInt(urlParams.get("bounceTime"), 10);
             }
+            if (urlParams.has("darken")) {
+                darken = parseInt(urlParams.get("darken"), 10)/100;
+            }
             if (urlParams.has("username") && urlParams.has("token")) {
                 username = urlParams.get("username");
                 token = urlParams.get("token");
@@ -233,6 +237,7 @@
             window.setTimeout(updateColor, 200);
             updateColor();
             addEventListener("resize", refreshWindowSizes);
+            document.getElementById("background").style.backgroundColor = "rgba(0,0,0," + darken + ")";
 
 
             const chat = new Chat({
