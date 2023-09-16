@@ -1,0 +1,19 @@
+* {
+    box-sizing: border-box;
+}
+html, body {
+    padding: 0px;
+    margin: 0px;
+}
+body {
+    background: #000;
+}
+#logoContainer {
+    position: absolute;
+    top: 20px;
+    left: 0px;
+ 
+}
+#logoImg {
+    min-width: 300px;
+}

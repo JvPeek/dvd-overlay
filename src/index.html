@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <link rel="stylesheet" type="text/css" href="css/main.css" media="screen" />
+    <title>DVD</title>
+</head>
+
+<body>
+    <div id="logoContainer">
+        <object type="image/svg+xml" data="assets/logos/dvd.svg" id="logoImg">
+        </object>
+    </div>
+
+    <script src="//unpkg.com/twitch-js@>2.0.0-beta.41"></script>
+
+    <script type="module">
+        const { Chat } = window.TwitchJs;
+        let token = undefined;
+        let channel = "jvpeek";
+        let username = undefined;
+        let rewardID = undefined;
+        let logo = "kc";
+        let admins = ["jvpeek"];
+        let windowSize = { w: 0, h: 0 };
+        let logoPosition = { x: Math.floor(Math.random() * 300), y: Math.floor(Math.random() * 300) }
+        let velocity = { x: -1, y: 1 };
+        let color = "#ff00ff";
+        let lastHue = -1;
+        let logoScale = 100;
+
+        function refreshWindowSizes(event) {
+            windowSize.w = window.innerWidth;
+            windowSize.h = window.innerHeight;
+            console.log(windowSize);
+        }
+        function populateLogo() {
+            document.getElementById("logoImg").data = "assets/logos/" + logo + ".svg";
+            document.getElementById("logoImg").style.width = logoScale + "%";
+        }
+
+        function HSVtoRGB(h, s, v) {
+            let r, g, b, i, f, p, q, t;
+            if (arguments.length === 1) {
+                s = h.s, v = h.v, h = h.h;
+            }
+            i = Math.floor(h * 6);
+            f = h * 6 - i;
+            p = v * (1 - s);
+            q = v * (1 - f * s);
+            t = v * (1 - (1 - f) * s);
+            switch (i % 6) {
+                case 0: r = v, g = t, b = p; break;
+                case 1: r = q, g = v, b = p; break;
+                case 2: r = p, g = v, b = t; break;
+                case 3: r = p, g = q, b = v; break;
+                case 4: r = t, g = p, b = v; break;
+                case 5: r = v, g = p, b = q; break;
+            }
+            return {
+                r: Math.round(r * 255),
+                g: Math.round(g * 255),
+                b: Math.round(b * 255)
+            };
+        }
+
+        function updateColor() {
+            let hue;
+
+            // Snap hue to one of 16 colors
+            do {
+                hue = Math.floor(Math.random() * 16) / 16;
+            } while (hue == lastHue);
+            lastHue = hue;
+
+            const rgb = HSVtoRGB(hue, 1.0, 1.0);
+            const svg = document.getElementById("logoImg").contentDocument;
+            console.log(svg);
+            // Select all <path> elements within the SVG.
+            const paths = svg.querySelectorAll("path");
+            console.log(rgb);
+            paths.forEach((path, index) => {
+                path.style.fill = "rgb(" + rgb.r + "," + rgb.g + "," + rgb.b + ")";
+
+            });
+
+
+        }
+        function moveLogo() {
+            const logoContainer = document.getElementById("logoContainer");
+            //console.log(logoContainer.offsetWidth);
+
+            if (logoPosition.x + logoContainer.offsetWidth + velocity.x >= windowSize.w || logoPosition.x + velocity.x <= 0) {
+                velocity.x = -(velocity.x);
+                updateColor();
+            }
+            if (logoPosition.y + logoContainer.offsetHeight + velocity.y >= windowSize.h || logoPosition.y + velocity.y <= 0) {
+                velocity.y = -(velocity.y);
+                updateColor();
+            }
+            logoPosition.x += velocity.x;
+            logoPosition.y += velocity.y;
+
+            logoContainer.style.left = logoPosition.x + "px";
+            logoContainer.style.top = logoPosition.y + "px";
+
+        }
+
+
+
+        const handleMessage = (msg) => {
+            let admin = false;
+            if (msg.event != "PRIVMSG") return;
+
+            if (rewardID != undefined) {
+                if (msg.tags.customRewardId != undefined) {
+                    if (msg.tags.customRewardId == rewardID) {
+                        //reward stuff goes here
+                    }
+                }
+            }
+
+            if (msg.message.startsWith("!")) {
+                if (msg.tags.isModerator === true || msg.tags.badges.broadcaster === true || admins.includes(msg.username)) {
+                    admin = true;
+                    // mod commands here
+
+                }
+
+                if (msg.message.startsWith("!up")) {
+                    velocity.y += -.1;
+                }
+                if (msg.message.startsWith("!down")) {
+                    velocity.y += .1;
+                }
+                if (msg.message.startsWith("!right")) {
+                    velocity.x += .1;
+                }
+                if (msg.message.startsWith("!left")) {
+                    velocity.x += -.1;
+                }
+
+            }
+        };
+
+
+
+        function chatsay(channel, text) {
+            if (token != undefined) {
+                chatobj.say(channel, text);
+            } else {
+                console.log("[ChatSay]", text, "is what i would say if I HAD A TOKEN!!11!"); //Fixed that for you
+            }
+        }
+
+        const run = async () => {
+            const queryString = window.location.search;
+            const urlParams = new URLSearchParams(queryString);
+            // Parse channel parameter
+            if (urlParams.has("channel")) {
+                channel = urlParams.get("channel");
+            }
+            if (urlParams.has("logo")) {
+                logo = urlParams.get("logo");
+            }
+
+            if (urlParams.has("logoScale")) {
+                logoScale = urlParams.get("logoScale");
+            }
+
+            if (urlParams.has("username") && urlParams.has("token")) {
+                username = urlParams.get("username");
+                token = urlParams.get("token");
+            }
+            // INIT
+            refreshWindowSizes();
+            populateLogo();
+            window.setInterval(moveLogo, 10);
+            // can't do 200 frames. 200ms it is
+            window.setTimeout(updateColor, 200);
+            updateColor();
+            addEventListener("resize", refreshWindowSizes);
+
+
+            const chat = new Chat({
+                token,
+                username,
+                log: { level: "warn" }
+            });
+
+            chat.on("*", (message) => {
+                handleMessage(message);
+            });
+
+            await chat.connect();
+            await chat.join(channel);
+            return chat;
+        };
+
+        const chatobj = run();
+    </script>
+</body>
+
+</html>
