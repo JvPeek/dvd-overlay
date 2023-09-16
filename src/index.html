@@ -11,10 +11,10 @@
 </head>
 
 <body>
-    <div id="logoContainer">
+    
         <object type="image/svg+xml" data="assets/logos/dvd.svg" id="logoImg">
         </object>
-    </div>
+    
 
     <script src="//unpkg.com/twitch-js@>2.0.0-beta.41"></script>
 
@@ -28,21 +28,24 @@
         let admins = ["jvpeek"];
         let windowSize = { w: 0, h: 0 };
         let logoPosition = { x: Math.floor(Math.random() * 300), y: Math.floor(Math.random() * 300) }
-        let velocity = { x: -1, y: 1 };
+        let velocity = { x: 1, y: 1 };
         let color = "#ff00ff";
         let lastHue = -1;
         let logoScale = 100;
+        let inputWeight = 0.1;
+        let bounceTime = 50;
+        let lastBounce = { time: 0, direction: "" };
+        let winAnimationLength = 2500;
 
-        function refreshWindowSizes(event) {
-            windowSize.w = window.innerWidth;
-            windowSize.h = window.innerHeight;
-            console.log(windowSize);
+        function constrain(value, min, max) {
+            if (value < min) {
+                return min;
+            } else if (value > max) {
+                return max;
+            } else {
+                return value;
+            }
         }
-        function populateLogo() {
-            document.getElementById("logoImg").data = "assets/logos/" + logo + ".svg";
-            document.getElementById("logoImg").style.width = logoScale + "%";
-        }
-
         function HSVtoRGB(h, s, v) {
             let r, g, b, i, f, p, q, t;
             if (arguments.length === 1) {
@@ -67,7 +70,12 @@
                 b: Math.round(b * 255)
             };
         }
+        function gameWon() {
 
+            for (let i = 0; i < winAnimationLength / 50; i++) {
+                window.setTimeout(updateColor, i * 50);
+            }
+        }
         function updateColor() {
             let hue;
 
@@ -79,10 +87,8 @@
 
             const rgb = HSVtoRGB(hue, 1.0, 1.0);
             const svg = document.getElementById("logoImg").contentDocument;
-            console.log(svg);
             // Select all <path> elements within the SVG.
             const paths = svg.querySelectorAll("path");
-            console.log(rgb);
             paths.forEach((path, index) => {
                 path.style.fill = "rgb(" + rgb.r + "," + rgb.g + "," + rgb.b + ")";
 
@@ -90,23 +96,59 @@
 
 
         }
-        function moveLogo() {
-            const logoContainer = document.getElementById("logoContainer");
-            //console.log(logoContainer.offsetWidth);
+        function setLastBounce(direction) {
+            if (lastBounce.direction === "") {
+                lastBounce.direction = direction;
+                lastBounce.time = Date.now();
+                return;
+            }
+            if (lastBounce.time + bounceTime >= Date.now() && lastBounce.direction != direction) {
 
-            if (logoPosition.x + logoContainer.offsetWidth + velocity.x >= windowSize.w || logoPosition.x + velocity.x <= 0) {
+                lastBounce.direction = "";
+                lastBounce.time = Date.now();
+                gameWon();
+                console.log("YOU'RE WINNER");
+                return;
+            }
+
+            lastBounce.direction = direction;
+            lastBounce.time = Date.now();
+        }
+
+        function refreshWindowSizes(event) {
+            windowSize.w = window.innerWidth;
+            windowSize.h = window.innerHeight;
+        }
+        function populateLogo() {
+            document.getElementById("logoImg").data = "assets/logos/" + logo + ".svg";
+            
+            const newLogoSize = document.getElementById("logoImg").offsetWidth * logoScale / 100;
+
+            document.getElementById("logoImg").style.width = newLogoSize + "px";
+        }
+        function moveLogo() {
+            const logoImg = document.getElementById("logoImg");
+            
+            const logoSize = {
+                x: logoImg.offsetWidth,
+                y: logoImg.offsetHeight
+            }
+            if (logoPosition.x + logoSize.x + velocity.x >= windowSize.w || logoPosition.x + velocity.x <= 0) {
                 velocity.x = -(velocity.x);
+                setLastBounce("x");
                 updateColor();
             }
-            if (logoPosition.y + logoContainer.offsetHeight + velocity.y >= windowSize.h || logoPosition.y + velocity.y <= 0) {
+            if (logoPosition.y + logoSize.y + velocity.y >= windowSize.h || logoPosition.y + velocity.y <= 0) {
                 velocity.y = -(velocity.y);
+                setLastBounce("y");
                 updateColor();
             }
             logoPosition.x += velocity.x;
             logoPosition.y += velocity.y;
-
-            logoContainer.style.left = logoPosition.x + "px";
-            logoContainer.style.top = logoPosition.y + "px";
+            logoPosition.x = constrain(logoPosition.x, 0, windowSize.w - logoSize.x);
+            logoPosition.y = constrain(logoPosition.y, 0, windowSize.h - logoSize.y);
+            logoImg.style.left = logoPosition.x + "px";
+            logoImg.style.top = logoPosition.y + "px";
 
         }
 
@@ -132,16 +174,16 @@
                 }
 
                 if (msg.message.startsWith("!up")) {
-                    velocity.y += -.1;
+                    velocity.y += -inputWeight;
                 }
                 if (msg.message.startsWith("!down")) {
-                    velocity.y += .1;
+                    velocity.y += inputWeight;
                 }
                 if (msg.message.startsWith("!right")) {
-                    velocity.x += .1;
+                    velocity.x += inputWeight;
                 }
                 if (msg.message.startsWith("!left")) {
-                    velocity.x += -.1;
+                    velocity.x += -inputWeight;
                 }
 
             }
@@ -172,6 +214,13 @@
                 logoScale = urlParams.get("logoScale");
             }
 
+            if (urlParams.has("inputWeight")) {
+                inputWeight = parseFloat(urlParams.get("inputWeight"));
+            }
+
+            if (urlParams.has("bounceTime")) {
+                bounceTime = parseInt(urlParams.get("bounceTime"), 10);
+            }
             if (urlParams.has("username") && urlParams.has("token")) {
                 username = urlParams.get("username");
                 token = urlParams.get("token");
